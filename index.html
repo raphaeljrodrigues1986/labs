@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InovaLab RN — Painel de Laboratórios e Deep Tech | FUNPEC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="embedded_data.js"></script>
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#4B5566;
+    --paper:#F4F2ED;
+    --panel:#FFFFFF;
+    --navy:#1F3864;
+    --navy-deep:#132244;
+    --teal:#0F766E;
+    --teal-soft:#E4F2F0;
+    --alto:#1E7A46;
+    --alto-bg:#DDF0E3;
+    --medio:#9C6B00;
+    --medio-bg:#FBEFD2;
+    --baixo:#A3323B;
+    --baixo-bg:#F6E0E2;
+    --line:#E2DED3;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+  h1,h2,h3{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    color:var(--navy-deep);
+    margin:0;
+  }
+  a{color:var(--teal);}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---- Top bar ---- */
+  .topbar{
+    background:var(--navy-deep);
+    color:#EFEAE0;
+    padding:14px 32px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:3px solid var(--teal);
+  }
+  .topbar .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .topbar .brand .mark{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:20px;
+    color:#fff;
+  }
+  .topbar .brand .tag{
+    font-size:12.5px;
+    color:#B9C2D6;
+    letter-spacing:.02em;
+  }
+  .topbar .meta{
+    font-size:12.5px;
+    color:#B9C2D6;
+    text-align:right;
+  }
+  .topbar .meta strong{color:#fff;}
+
+  /* ---- Hero ---- */
+  .hero{
+    padding:40px 32px 28px;
+    max-width:1180px;
+    margin:0 auto;
+    border-bottom:1px solid var(--line);
+  }
+  .hero h1{
+    font-size:clamp(28px, 4vw, 42px);
+    line-height:1.08;
+    max-width:820px;
+  }
+  .hero p.lede{
+    max-width:680px;
+    color:var(--ink-soft);
+    font-size:16px;
+    margin-top:14px;
+  }
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:1px;
+    background:var(--line);
+    margin-top:28px;
+    border:1px solid var(--line);
+  }
+  .kpi{
+    background:var(--panel);
+    padding:18px 20px;
+  }
+  .kpi .n{
+    font-family:'Fraunces', serif;
+    font-size:32px;
+    font-weight:600;
+    color:var(--navy-deep);
+    line-height:1;
+  }
+  .kpi .n.alto{color:var(--alto);}
+  .kpi .label{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+
+  /* ---- Layout ---- */
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:36px 32px 80px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:36px;
+  }
+  section{scroll-margin-top:20px;}
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .section-head h2{font-size:22px;}
+  .section-head .note{font-size:13px;color:var(--ink-soft); max-width:480px;}
+
+  .grid-2{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:880px){ .grid-2{grid-template-columns:1fr;} .kpi-row{grid-template-columns:1fr 1fr;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+  }
+
+  #map{ height:420px; width:100%; border-radius:var(--radius); }
+  .legend-chip{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin-right:14px;
+  }
+  .legend-chip .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+
+  .chart-box{position:relative; height:260px;}
+
+  /* ---- Filters ---- */
+  .filters{
+    display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;
+  }
+  .filters select, .filters input{
+    font-family:inherit;
+    font-size:13.5px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:var(--radius);
+    color:var(--ink);
+  }
+  .filters input{min-width:220px;}
+
+  /* ---- Table ---- */
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--ink-soft);
+    border-bottom:2px solid var(--navy-deep);
+    padding:8px 10px;
+    background:var(--paper);
+    position:sticky; top:0;
+  }
+  tbody td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  tbody tr:hover{background:var(--teal-soft);}
+  .badge{
+    display:inline-block;
+    padding:3px 9px;
+    border-radius:20px;
+    font-size:11.5px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .badge.ALTO{background:var(--alto-bg); color:var(--alto);}
+  .badge.MEDIO{background:var(--medio-bg); color:var(--medio);}
+  .badge.BAIXO{background:var(--baixo-bg); color:var(--baixo);}
+  .table-scroll{max-height:560px; overflow:auto; border:1px solid var(--line);}
+  .cell-name{font-weight:600; color:var(--navy-deep);}
+  .cell-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .cell-just{max-width:360px; font-size:12.5px; color:var(--ink-soft);}
+
+  details.row-detail{margin-top:4px;}
+  details.row-detail summary{cursor:pointer; font-size:12px; color:var(--teal);}
+
+  /* ---- Form card ---- */
+  .form-cta{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:0;
+    border:1px solid var(--line);
+    background:var(--panel);
+  }
+  @media (max-width:880px){.form-cta{grid-template-columns:1fr;}}
+  .form-cta .left{padding:26px;}
+  .form-cta .right{
+    background:var(--navy-deep);
+    color:#EFEAE0;
+    padding:26px;
+  }
+  .form-cta .right h3{color:#fff; font-size:18px;}
+  .form-cta ol{padding-left:18px; margin:14px 0 0; font-size:13.5px; color:#D6DCEA;}
+  .form-cta ol li{margin-bottom:8px;}
+  .btn{
+    display:inline-block;
+    background:var(--teal);
+    color:#fff;
+    text-decoration:none;
+    padding:10px 16px;
+    border-radius:var(--radius);
+    font-size:13.5px;
+    font-weight:600;
+    margin-top:16px;
+  }
+  .btn.secondary{
+    background:transparent;
+    border:1px solid #A9BEDD;
+    color:#EFEAE0;
+  }
+  .qcard{
+    border-top:1px solid var(--line);
+    padding:12px 0;
+    font-size:13.5px;
+  }
+  .qcard .q{font-weight:600; color:var(--navy-deep);}
+  .qcard .meta{font-size:12px; color:var(--ink-soft); margin-top:3px;}
+
+  footer{
+    padding:26px 32px 60px;
+    max-width:1180px;
+    margin:0 auto;
+    color:var(--ink-soft);
+    font-size:12.5px;
+    border-top:1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="mark">InovaLab RN</span>
+    <span class="tag">Painel interno &mdash; FUNPEC / UFRN</span>
+  </div>
+  <div class="meta">
+    Base 2024 (respostas ao mapeamento) &middot; atualização crítica <strong>set/2026</strong><br>
+    26 laboratórios UFRN &middot; 340 patentes mapeadas
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Onde estão as tecnologias com potencial de virar empresa no Rio Grande do Norte</h1>
+  <p class="lede">Consolidação do mapeamento InovaLab (UFRN) com a prospecção de patentes da UFRN,
+  cruzados com uma checagem crítica na web sobre o que mudou desde 2024 — para orientar onde a FUNPEC deve
+  investir tempo de acompanhamento e diligência tecnológica.</p>
+
+  <div class="kpi-row" id="kpiRow"></div>
+</div>
+
+<div class="wrap">
+
+  <section id="mapa">
+    <div class="section-head">
+      <h2>Onde estão os laboratórios</h2>
+      <div class="note">Localização aproximada por cidade-sede. Cor do marcador = potencial deep tech.</div>
+    </div>
+    <div class="panel">
+      <div id="map"></div>
+      <div style="margin-top:12px;">
+        <span class="legend-chip"><span class="dot" style="background:var(--alto)"></span>Potencial alto</span>
+        <span class="legend-chip"><span class="dot" style="background:var(--medio)"></span>Potencial médio</span>
+        <span class="legend-chip"><span class="dot" style="background:var(--baixo)"></span>Potencial baixo</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="patentes">
+    <div class="section-head">
+      <h2>Patentes UFRN por área &middot; 340 no total</h2>
+      <div class="note">Base: prospecção AGIR/UFRN, 03/09/2024 &middot; agir.ufrn.br/vitrine/patentes</div>
+    </div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="chart-box"><canvas id="chartArea"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="chart-box"><canvas id="chartPotencial"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="destaque-materiais" class="panel" style="border-left:4px solid var(--alto); margin-bottom:0;">
+    <div style="display:flex; gap:14px; align-items:flex-start;">
+      <span class="badge ALTO" style="flex-shrink:0; margin-top:2px;">Achado</span>
+      <div>
+        <strong style="color:var(--navy-deep);">O grupo com mais patentes da UFRN não está no mapeamento InovaLab.</strong>
+        <p style="margin:6px 0 0; font-size:13.5px; color:var(--ink-soft); max-width:820px;">
+        O "Grupo de Pesquisa Materiais e Tecnologia dos Pós" (coord. Uilame Umbelino Gomes, pesquisador 1B do CNPq)
+        não respondeu ao formulário InovaLab 2024 — mas segundo a própria Agência de Inovação da UFRN (AGIR), é
+        o pesquisador com mais patentes concedidas na instituição, com depósitos recentes em metalurgia do pó,
+        cerâmicas técnicas e sensores ópticos. Está incluído na tabela abaixo e na aba "Foco_Geologia_Materiais_Tec"
+        da planilha, com recomendação de contato direto e prioritário.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="laboratorios">
+    <div class="section-head">
+      <h2>Laboratórios mapeados</h2>
+      <div class="note">Marque "Só Geologia / Materiais / Tecnologia" para ver o recorte pedido pela FUNPEC. Clique em uma linha para ver a justificativa completa.</div>
+    </div>
+    <div class="filters">
+      <input type="text" id="fSearch" placeholder="Buscar por nome, coordenador(a) ou área…">
+      <select id="fPotencial">
+        <option value="">Potencial: todos</option>
+        <option value="ALTO">Alto</option>
+        <option value="MEDIO">Médio</option>
+        <option value="BAIXO">Baixo</option>
+      </select>
+      <select id="fDominio">
+        <option value="">Domínio: todos</option>
+      </select>
+      <label style="display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--ink-soft);">
+        <input type="checkbox" id="fFoco" style="width:auto;">
+        Só Geologia / Materiais / Tecnologia
+      </label>
+    </div>
+    <div class="panel" style="padding:0;">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:24%">Laboratório</th>
+              <th style="width:16%">Coordenador(a)</th>
+              <th style="width:16%">Domínio</th>
+              <th style="width:16%">Área</th>
+              <th style="width:10%">Potencial</th>
+              <th style="width:18%">Status 2026</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="formulario">
+    <div class="section-head">
+      <h2>Formulário de atualização para os pesquisadores</h2>
+      <div class="note">Roteiro pronto para reenviar aos coordenadores — a planilha traz a mesma lista na aba "Formulario_Pesquisadores".</div>
+    </div>
+    <div class="form-cta">
+      <div class="left">
+        <h3 style="color:var(--navy-deep); font-size:18px;">Perguntas do formulário</h3>
+        <div id="formQuestions"></div>
+      </div>
+      <div class="right">
+        <h3>Como publicar isto para os professores</h3>
+        <ol>
+          <li>Crie um Google Forms (ou Microsoft Forms/SEI) usando as perguntas ao lado — o texto e o tipo de campo
+          já estão prontos para copiar.</li>
+          <li>Envie o link junto com este painel para os coordenadores listados na tabela acima.</li>
+          <li>As respostas alimentam a coluna "Status 2026" da planilha <span class="mono">InovaLab_RN_Atualizado_2026.xlsx</span>,
+          que a FUNPEC deve manter como fonte da verdade.</li>
+          <li>Priorize primeiro os laboratórios marcados como <strong>potencial alto</strong> na Watchlist da planilha.</li>
+        </ol>
+        <a class="btn" href="https://forms.google.com" target="_blank" rel="noopener">Abrir Google Forms ↗</a>
+        <a class="btn secondary" href="InovaLab_RN_Atualizado_2026.xlsx">Baixar planilha completa</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Painel gerado a partir de "PROJETO_INOVALAB_RN (respostas)", "Lista de Prospecção InovaLab" e "Cópia de UFRN
+  patentes.xlsx" (dados de 2024), com checagem complementar via busca na web em setembro de 2026. Classificações
+  de potencial deep tech são uma triagem qualitativa inicial e não substituem due diligence técnica ou jurídica
+  de propriedade intelectual — ver aba "Metodologia" da planilha. Construído como página estática para publicação
+  via GitHub Pages como aba interna da FUNPEC.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
