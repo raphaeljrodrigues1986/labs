@@ -1,5 +1,5 @@
 (function () {
-  const DATA = window.__INOVALAB_DATA__;
+  const DATA = window.__FUNPEC_LABS_DATA__;
   const LABS = DATA.labs;
   const CIDADES = DATA.cidades;
   const PAT = DATA.patentes_area;
@@ -76,7 +76,7 @@
       datasets: [
         {
           data: PAT.map((p) => p.qtd),
-          backgroundColor: ["#1F3864", "#0F766E", "#C9A24B"],
+          backgroundColor: ["#0F2A1E", "#1DA653", "#C9A24B"],
           borderColor: "#FFFFFF",
           borderWidth: 2,
         },
